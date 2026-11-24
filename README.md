@@ -6,6 +6,10 @@ An Android home-screen launcher (`com.praiselab.horizon`): clock and agenda, liv
 
 Download the APK from [my-apps releases](https://github.com/chahatdeep/my-apps/releases?q=horizon).
 
+## Download
+
+Get **Horizon 1.0** from the [my-apps releases](https://github.com/chahatdeep/my-apps/releases/tag/horizon-v1.0) ([Horizon-1.0.apk](https://github.com/chahatdeep/my-apps/releases/download/horizon-v1.0/Horizon-1.0.apk)). Open it on the phone, allow installs from your browser if Android asks, then press Home and pick Horizon as the default home app. More of my apps: [chahatdeep.github.io/my-apps](https://chahatdeep.github.io/my-apps).
+
 ## Build
 
 No Gradle. From PowerShell:
@@ -17,3 +21,7 @@ No Gradle. From PowerShell:
 It copies `web/index.html` into the app's assets, compiles, and signs `Horizon.apk`. Signing uses a local keystore that is not in this repo; updates must be signed with the same key to install over an existing copy.
 
 Requires Android 11 (API 30) or later.
+
+## License
+
+[MIT](LICENSE)
