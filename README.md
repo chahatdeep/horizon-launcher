@@ -4,8 +4,6 @@ An Android home-screen launcher (`com.praiselab.horizon`): clock and agenda, liv
 
 <img src="docs/home.jpg" alt="Horizon home screen with a clock, weather, music controls and app folders (personal details blurred)" width="300">
 
-Download the APK from [my-apps releases](https://github.com/chahatdeep/my-apps/releases?q=horizon).
-
 ## Download
 
 Get **Horizon 1.0** from the [my-apps releases](https://github.com/chahatdeep/my-apps/releases/tag/horizon-v1.0) ([Horizon-1.0.apk](https://github.com/chahatdeep/my-apps/releases/download/horizon-v1.0/Horizon-1.0.apk)). Open it on the phone, allow installs from your browser if Android asks, then press Home and pick Horizon as the default home app. More of my apps: [chahatdeep.github.io/my-apps](https://chahatdeep.github.io/my-apps).
