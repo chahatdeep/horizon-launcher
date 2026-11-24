@@ -2,6 +2,10 @@
 
 An Android home-screen launcher (`com.praiselab.horizon`): clock and agenda, live tiles, folders, widgets, an app drawer with search, and optional Microsoft To Do / calendar sign-in (you enter your own client ID; no secret ships in the app).
 
+<img src="docs/home.jpg" alt="Horizon home screen with a clock, weather, music controls and app folders (personal details blurred)" width="300">
+
+Download the APK from [my-apps releases](https://github.com/chahatdeep/my-apps/releases?q=horizon).
+
 ## Build
 
 No Gradle. From PowerShell:
