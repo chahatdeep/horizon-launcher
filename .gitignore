@@ -1,0 +1,13 @@
+# build outputs
+*.apk
+*.idsig
+android/build/
+android/out/
+android/assets/index.html
+# signing key: keep it local (updates must be signed with it)
+*.keystore
+*.jks
+# screenshots and phone dumps (may show personal content)
+*.png
+import/
+test/

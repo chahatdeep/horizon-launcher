@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Horizon Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400..700&display=swap" media="print" onload="this.media='all'">
+<style>
+/* Layout: a single portrait column of near-opaque cards over the wallpaper (agenda, pinned apps, tasks, focus),
+   a second page with every app grouped by category, and a thumb-height dock with one search box. */
+:root{
+  --bg:#e9edf3;
+  --surface: rgba(250,251,253,.93);
+  --surface-solid:#fafbfd;
+  --sunk:#eef1f6;
+  --chip:#e4e9f1;
+  --fg:#181a1f; --fg-2:#454c5b; --fg-3:#656d7e;
+  --line: rgba(26,34,52,.09);
+  --accent:#1a66d6; --accent-soft: rgba(26,102,214,.12); --on-accent:#ffffff;
+  --rim: rgba(255,255,255,.8);
+  --shadow: 0 14px 34px -18px rgba(10,16,30,.55);
+  --scrim: rgba(8,12,20,.06);
+  --danger:#c5221f;
+  --font: "Google Sans Flex","Google Sans","Roboto Flex",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-text: "Roboto Flex","Google Sans Flex",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --sat-x: var(--sat, env(safe-area-inset-top, 0px));
+  --sab-x: var(--sab, env(safe-area-inset-bottom, 0px));
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101216; --surface: rgba(26,28,34,.92); --surface-solid:#1b1d23; --sunk:#14161b; --chip:#2a2d36;
+    --fg:#eef0f5; --fg-2:#c3c8d3; --fg-3:#9aa1b0; --line: rgba(255,255,255,.08);
+    --accent:#8ab4f8; --accent-soft: rgba(138,180,248,.16); --on-accent:#0b1b33;
+    --rim: rgba(255,255,255,.07); --shadow: 0 14px 34px -18px rgba(0,0,0,.8); --scrim: rgba(0,0,0,.28); --danger:#f28b82;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101216; --surface: rgba(26,28,34,.92); --surface-solid:#1b1d23; --sunk:#14161b; --chip:#2a2d36;
+  --fg:#eef0f5; --fg-2:#c3c8d3; --fg-3:#9aa1b0; --line: rgba(255,255,255,.08);
+  --accent:#8ab4f8; --accent-soft: rgba(138,180,248,.16); --on-accent:#0b1b33;
+  --rim: rgba(255,255,255,.07); --shadow: 0 14px 34px -18px rgba(0,0,0,.8); --scrim: rgba(0,0,0,.28); --danger:#f28b82;
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-text);font-size:15px;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent}
+body.wp{background:transparent;--hero-fg:#fff}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+#env{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+body.wp #env{display:none}
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:0;pointer-events:none}
+
+.shell{position:relative;z-index:1;max-width:480px;margin:0 auto;padding-inline:16px;touch-action:pan-y;
+  padding-block:calc(var(--sat-x) + 10px) calc(var(--sab-x) + 128px);min-height:100%}
+.view{display:flex;flex-direction:column;gap:14px;animation:slide .35s var(--ease)}
+@keyframes slide{from{transform:translateX(var(--from,0))}to{transform:none}}
+
+/* header */
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:10px 6px 4px}
+.clock{font-family:var(--font);font-size:60px;font-weight:400;line-height:.95;letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 12px rgba(0,0,0,.25);color:var(--hero-fg,var(--fg))}
+.dateline{font-family:var(--font);font-size:17px;font-weight:500;margin-top:8px;color:var(--hero-fg,var(--fg));text-shadow:0 1px 8px rgba(0,0,0,.3)}
+.hbtns{display:flex;gap:8px;padding-bottom:4px}
+.ib{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.ib svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.preview{align-self:flex-start;font-size:12px;font-weight:600;font-family:var(--font);color:var(--fg-2);background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 12px}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--rim,var(--line));border-radius:var(--card-r,28px);padding:14px 16px 16px;
+  box-shadow:inset 0 1px 0 var(--rim),var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;margin-bottom:4px}
+.ch h2{margin:0;font-family:var(--font);font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.ch h2 svg{width:18px;height:18px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ch .meta{font-size:13px;color:var(--fg-3);font-weight:400;font-family:var(--font-text);text-align:right}
+.act{font-family:var(--font);font-size:14px;font-weight:600;color:var(--accent);padding:8px 12px;border-radius:99px;display:inline-flex;align-items:center;gap:6px}
+.act:active{background:var(--accent-soft)}
+.act svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+
+/* agenda */
+.dayh{font-family:var(--font);font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);margin:10px 6px 2px}
+.dayh:first-child{margin-top:4px}
+.ev{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:9px 6px;border-radius:16px}
+.ev:active{background:var(--chip)}
+.ev .dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none;margin-top:6px}
+.ev .tx{flex:1;min-width:0}
+.ev .t{font-family:var(--font);font-size:15.5px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.ev .m{display:block;font-size:13px;color:var(--fg-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev .tm{font-family:var(--font);font-size:13.5px;color:var(--fg-2);white-space:nowrap;font-variant-numeric:tabular-nums;padding-top:1px}
+.ev.now .tm{color:var(--accent);font-weight:600}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);border-radius:99px;padding:2px 7px;margin-right:6px;vertical-align:1px}
+.empty{padding:10px 6px 4px;color:var(--fg-2);font-size:14px;line-height:1.45;margin:0}
+.empty b{display:block;color:var(--fg);font-family:var(--font);font-weight:600;font-size:15px;margin-bottom:2px}
+.btn{height:42px;padding:0 18px;border-radius:99px;background:var(--accent);color:var(--on-accent);font-family:var(--font);font-weight:600;font-size:14px;margin-top:10px}
+
+/* app icons */
+.agrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px 4px}
+.app{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;padding:4px 0;border-radius:18px;
+  -webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.ico{--s:58px;width:var(--s);height:var(--s);border-radius:50%;display:block;background:#fff;flex:none;object-fit:cover;
+  box-shadow:0 0 0 1px rgba(60,64,67,.08),0 1px 2px rgba(60,64,67,.25),0 8px 16px -8px rgba(20,22,26,.5);transition:transform .25s var(--ease)}
+.app:active .ico{transform:scale(.92)}
+.app .nm{font-family:var(--font);font-size:12.5px;font-weight:500;line-height:1.2;max-width:100%;padding:0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pinned .ico{--s:56px}
+
+/* tasks */
+.addt{display:flex;align-items:center;gap:10px;background:var(--sunk);border-radius:16px;padding:0 6px 0 14px;height:46px;margin:2px 0 6px}
+.addt svg{width:18px;height:18px;flex:none;fill:none;stroke:var(--fg-3);stroke-width:2.2;stroke-linecap:round}
+.addt input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:15px;height:100%}
+.addt input::placeholder{color:var(--fg-3)}
+.task{display:flex;align-items:center;gap:12px;padding:8px 6px;border-radius:14px}
+.task .ck{width:24px;height:24px;border-radius:50%;border:2px solid var(--fg-3);flex:none;display:grid;place-items:center}
+.task .ck svg{width:14px;height:14px;fill:none;stroke:var(--on-accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.task.done .ck{background:var(--accent);border-color:var(--accent)}
+.task.done .ck svg{opacity:1}
+.task .tt{flex:1;min-width:0;font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+.task.done .tt{color:var(--fg-3);text-decoration:line-through}
+.task .del{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--fg-3);flex:none}
+.task .del svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.tfoot{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--fg-3);padding:6px 6px 0}
+
+/* focus */
+.focus{display:flex;align-items:center;gap:16px}
+.ring{width:84px;height:84px;flex:none;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .rt{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.fbody{flex:1;min-width:0}
+.fbody .fs{font-size:13.5px;color:var(--fg-2);margin-bottom:10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:36px;min-width:48px;padding:0 12px;border-radius:99px;background:var(--chip);font-family:var(--font);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.chip.go{background:var(--accent);color:var(--on-accent)}
+
+/* apps page */
+.aph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 6px 2px}
+.aph h1{margin:0;font-family:var(--font);font-size:28px;font-weight:600;color:var(--hero-fg,var(--fg));text-shadow:0 1px 10px rgba(0,0,0,.25)}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:4px;box-shadow:var(--shadow)}
+.seg button{height:34px;padding:0 14px;border-radius:99px;font-family:var(--font);font-weight:600;font-size:13.5px;color:var(--fg-2)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.grp h3{margin:0 0 12px;font-family:var(--font);font-size:13px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);display:flex;justify-content:space-between}
+.grp h3 span{letter-spacing:0;text-transform:none;font-weight:500}
+
+/* dock */
+.dock{position:fixed;z-index:4;left:0;right:0;bottom:0;padding:0 16px calc(var(--sab-x) + 12px);pointer-events:none}
+.dock .in{max-width:448px;margin:0 auto;display:flex;gap:10px;pointer-events:auto}
+.sbox{flex:1;min-width:0;height:58px;border-radius:99px;display:flex;align-items:center;gap:12px;padding:0 8px 0 18px;
+  background:var(--surface-solid);border:1px solid var(--line);box-shadow:inset 0 1px 0 var(--rim),0 16px 34px -12px rgba(0,0,0,.55)}
+.sbox svg{width:20px;height:20px;flex:none;fill:none;stroke:var(--fg-2);stroke-width:2.2;stroke-linecap:round}
+.sbox input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-family:var(--font);font-size:16px;height:100%}
+.sbox input::placeholder{color:var(--fg-3)}
+.sbox input::-webkit-search-cancel-button{display:none}
+.sbox .clr{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--chip);flex:none}
+.dbtn{width:58px;height:58px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--surface-solid);border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 var(--rim),0 16px 34px -12px rgba(0,0,0,.55);color:var(--fg)}
+.dbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* search results */
+.results{position:fixed;z-index:3;left:0;right:0;bottom:calc(var(--sab-x) + 82px);padding:0 16px;pointer-events:none}
+.results .in{max-width:448px;margin:0 auto;max-height:calc(100vh - var(--sat-x) - var(--sab-x) - 110px);overflow:auto;pointer-events:auto;
+  background:var(--surface-solid);border:1px solid var(--line);border-radius:28px;padding:14px;box-shadow:0 20px 50px -16px rgba(0,0,0,.6)}
+.rl{font-family:var(--font);font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);margin:4px 6px 10px}
+.rrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 8px;border-radius:16px;font-size:15px}
+.rrow:active,.rrow.top{background:var(--sunk)}
+.rrow .g{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--chip);flex:none}
+.rrow .g svg{width:18px;height:18px;fill:none;stroke:var(--fg-2);stroke-width:2.2;stroke-linecap:round}
+.rrow small{display:block;color:var(--fg-3);font-size:13px}
+
+/* sheets */
+.sheetwrap{position:fixed;inset:0;z-index:6;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;padding:0 10px calc(var(--sab-x) + 10px)}
+.sheet{width:min(460px,100%);max-height:85vh;overflow:auto;background:var(--surface-solid);border-radius:30px;padding:10px 18px 18px;box-shadow:0 -10px 40px rgba(0,0,0,.35);animation:up .3s var(--ease)}
+@keyframes up{from{transform:translateY(30px)}to{transform:none}}
+.grab{width:40px;height:5px;border-radius:9px;background:var(--chip);margin:2px auto 12px}
+.sheet h2{margin:0 0 4px;font-family:var(--font);font-size:20px;font-weight:600}
+.sheet .sub{color:var(--fg-3);font-size:13.5px;margin-bottom:8px}
+.opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:13px 8px;border-radius:16px;font-size:15.5px;font-family:var(--font);font-weight:500}
+.opt:active{background:var(--sunk)}
+.opt svg{width:22px;height:22px;fill:none;stroke:var(--fg-2);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.opt.danger{color:var(--danger)}
+.opt.danger svg{stroke:var(--danger)}
+.mhead{display:flex;align-items:center;gap:14px;padding:4px 6px 10px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.mhead .ico{--s:48px}
+.mhead b{font-family:var(--font);font-size:18px;font-weight:600}
+.slabel{font-family:var(--font);font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);margin:16px 6px 8px}
+.choice{display:flex;gap:8px;flex-wrap:wrap}
+.choice button{height:40px;padding:0 16px;border-radius:99px;background:var(--chip);font-family:var(--font);font-weight:600;font-size:14px}
+.choice button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+
+.toast{position:fixed;z-index:8;left:50%;bottom:calc(var(--sab-x) + 90px);transform:translateX(-50%);background:var(--fg);color:var(--bg);
+  font-family:var(--font);font-weight:500;font-size:14px;padding:11px 18px;border-radius:99px;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:calc(100% - 32px);text-align:center}
+
+/* feed mode: the Now page inside the native launcher */
+body.feed .dock, body.feed #dots, body.feed #today, body.feed #apps, body.feed #results, body.feed .preview{display:none!important}
+body.feed .shell{padding-block:calc(var(--sat-x) + 10px) calc(var(--sab-x) + 28px)}
+body.feed .sheetwrap .sheet{border-radius:var(--card-r,30px)}
+
+/* Now page */
+.greet{font-family:var(--font);font-size:34px;font-weight:500;line-height:1.1;letter-spacing:-.01em;color:var(--hero-fg,var(--fg));text-shadow:0 1px 12px rgba(0,0,0,.28);text-wrap:balance}
+.pbtn{height:44px;padding:0 16px 0 12px;border-radius:99px;display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);font-family:var(--font);font-weight:600;font-size:14px}
+.pbtn svg{width:20px;height:20px}
+.wxtop{display:flex;align-items:center;gap:14px}
+.wxtop .wi{width:72px;height:72px;flex:none}
+.wxtemp{font-family:var(--font);font-size:56px;font-weight:400;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.wxcond{font-family:var(--font);font-size:17px;font-weight:500}
+.wxmeta{font-size:13.5px;color:var(--fg-2);margin-top:3px;font-variant-numeric:tabular-nums}
+.wxplace{font-size:13px;color:var(--fg-3);display:flex;align-items:center;gap:4px;margin-bottom:8px}
+.wxplace svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2}
+.hours{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:14px}
+.hours div{background:var(--sunk);border-radius:16px;padding:9px 2px 10px;text-align:center;font-family:var(--font);font-variant-numeric:tabular-nums}
+.hours small{display:block;color:var(--fg-3);font-size:12px}
+.hours svg{width:26px;height:26px;display:block;margin:5px auto 4px}
+.hours b{font-weight:600;font-size:14.5px}
+.note{font-size:12.5px;color:var(--fg-3);margin-top:8px;line-height:1.4}
+.big-next{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;padding:4px 6px 2px}
+.big-next .when{font-family:var(--font);font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent)}
+.big-next .what{font-family:var(--font);font-size:21px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.big-next .m{font-size:14px;color:var(--fg-2)}
+.topics{margin:2px 0 6px}
+.topics .chip{height:34px}
+.story{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;padding:12px 6px;border-radius:16px}
+.story+.story{border-top:1px solid var(--line);border-radius:0}
+.story:active{background:var(--sunk)}
+.story .src{font-size:12.5px;color:var(--fg-3);font-weight:500;display:flex;gap:6px;align-items:center}
+.story .src i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:700;color:#fff;background:var(--c)}
+.story .st{font-family:var(--font);font-size:16px;font-weight:500;line-height:1.35}
+.dots{display:flex;justify-content:center;gap:6px;margin:0 auto 10px;pointer-events:auto;width:max-content;padding:6px 8px;border-radius:99px}
+.dots button{width:8px;height:8px;border-radius:99px;background:var(--hero-fg,var(--fg));opacity:.4;transition:width .25s var(--ease),opacity .25s}
+.dots button[aria-current="true"]{width:22px;opacity:.95}
+.dots button::after{content:"";display:block;margin:-10px -6px;height:28px}
+
+@media (max-width:360px){ .ico{--s:52px} .clock{font-size:52px} }
+@media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+<canvas id="env" aria-hidden="true"></canvas>
+<div class="scrim"></div>
+
+<div class="shell" id="shell">
+  <!-- NOW (left of Today) -->
+  <main class="view" id="now" hidden>
+    <div class="head">
+      <div>
+        <div class="greet" id="greet">Good evening</div>
+        <div class="dateline" id="nowDate">Friday, October 9</div>
+      </div>
+      <div class="hbtns">
+        <button class="pbtn" id="discoverBtn" aria-label="Open Google Discover in the Google app">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="7" rx="2.5" fill="#4285F4"/><rect x="4" y="13" width="7" height="7.5" rx="2.5" fill="#EA4335"/><rect x="13" y="13" width="7" height="7.5" rx="2.5" fill="#FBBC04"/></svg>Discover
+        </button>
+      </div>
+    </div>
+    <section class="card" id="wx" aria-label="Weather"></section>
+    <section class="card" id="nowNext" aria-label="Next event"></section>
+    <section class="card" aria-labelledby="h-news">
+      <div class="ch">
+        <h2 id="h-news"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M7 9h10M7 12.5h10M7 16h6"/></svg>Stories</h2>
+        <button class="act" id="newsRefresh">Refresh</button>
+      </div>
+      <div class="chips topics" id="topics"></div>
+      <div id="news"></div>
+    </section>
+  </main>
+
+  <!-- TODAY -->
+  <main class="view" id="today">
+    <div class="head">
+      <div>
+        <div class="clock" id="clock">11:22</div>
+        <div class="dateline" id="dateline">Thursday, October 8</div>
+      </div>
+      <div class="hbtns">
+        <button class="ib" id="settingsBtn" aria-label="Home screen settings">
+          <svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg>
+        </button>
+      </div>
+    </div>
+    <span class="preview" id="previewTag" hidden>Windows preview · sample apps and events</span>
+
+    <section class="card" aria-labelledby="h-agenda">
+      <div class="ch">
+        <h2 id="h-agenda"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Up next</h2>
+        <button class="act" id="newEvent" aria-label="New event"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <div id="agenda"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-pins">
+      <div class="ch"><h2 id="h-pins"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>Pinned</h2><span class="meta">Long-press an app to pin</span></div>
+      <div class="agrid pinned" id="pins"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-tasks">
+      <div class="ch"><h2 id="h-tasks"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8 12.2l2.8 2.8L16.5 9.3"/></svg>Tasks</h2><span class="meta" id="taskMeta"></span></div>
+      <form class="addt" id="addTask" autocomplete="off">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        <input id="taskInput" placeholder="Add a task" aria-label="Add a task" enterkeyhint="done">
+      </form>
+      <div id="tasks"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-focus">
+      <div class="ch"><h2 id="h-focus"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5M9.5 3h5"/></svg>Focus</h2><span class="meta" id="focusMeta"></span></div>
+      <div class="focus">
+        <div class="ring" aria-hidden="true">
+          <svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="36" fill="none" stroke="var(--chip)" stroke-width="8"/><circle id="ringArc" cx="42" cy="42" r="36" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="0"/></svg>
+          <div class="rt" id="ringText">35:00</div>
+        </div>
+        <div class="fbody">
+          <div class="fs" id="focusState">Pick a length, then start.</div>
+          <div class="chips" id="focusChips"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- APPS -->
+  <main class="view" id="apps" hidden>
+    <div class="aph">
+      <h1>Apps</h1>
+      <div class="seg" role="group" aria-label="Sort apps">
+        <button id="sortGroups" aria-pressed="true">Groups</button>
+        <button id="sortAZ" aria-pressed="false">A–Z</button>
+      </div>
+    </div>
+    <div id="appList" style="display:flex;flex-direction:column;gap:14px"></div>
+  </main>
+</div>
+
+<div class="results" id="results" hidden><div class="in" id="resultsIn"></div></div>
+
+<nav class="dock" aria-label="Dock">
+  <div class="dots" id="dots" role="tablist" aria-label="Pages">
+    <button data-go="now" aria-label="Now"></button><button data-go="today" aria-label="Today" aria-current="true"></button><button data-go="apps" aria-label="All apps"></button>
+  </div>
+  <div class="in">
+    <label class="sbox" for="q">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg>
+      <input id="q" type="search" autocomplete="off" placeholder="Search apps, events, web" aria-label="Search" enterkeyhint="search">
+      <button class="clr" id="qclr" type="button" aria-label="Clear search" hidden><svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </label>
+    <button class="dbtn" id="pageBtn" aria-label="All apps"></button>
+  </div>
+</nav>
+
+<div class="sheetwrap" id="sheetwrap" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const N = window.HorizonNative || null;
+const FEED = /[?&]mode=feed(&|$)/.test(location.search);
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const store = {get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+               set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hz = window.hz = {};
+
+/* ---------- prefs ---------- */
+const prefs = Object.assign({theme:'system', env: N ? 'wallpaper' : 'lake', icons:'color', sort:'groups', units:'C', topics:['top','TECHNOLOGY','SCIENCE']}, store.get('hz-prefs', {}));
+if(!Array.isArray(prefs.topics) || !prefs.topics.length) prefs.topics = ['top'];
+const savePrefs = () => store.set('hz-prefs', prefs);
+function applyTheme(){ if(prefs.theme==='system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = prefs.theme; }
+
+/* ---------- painted backgrounds (used when the wallpaper isn't) ---------- */
+const ENVS = {
+  wallpaper:{name:'Wallpaper'},
+  lake:{name:'Alpine Lake',sky:['#7fa9dc','#c6dbef','#f6dcc8'],sun:[.7,.3,'255,238,214'],
+    layers:[['#a9b9cf',.42,.06,3,1],['#7d93b1',.5,.07,5,2],['#55698a',.58,.05,8,3]],water:[.62,'#7d97b8','#4f6687']},
+  dunes:{name:'Desert Dusk',sky:['#f2b48c','#f8d3b0','#fbe9d6'],sun:[.3,.4,'255,232,200'],
+    layers:[['#e9b98e',.55,.05,2,4],['#d99a6c',.64,.06,3,5],['#b9744a',.75,.07,4,6]]},
+  night:{name:'Moonlit Ridge',sky:['#081127','#1b2a55','#3b4a7a'],sun:[.74,.2,'220,230,255'],stars:true,
+    layers:[['#2b3863',.55,.08,3,7],['#1c2749',.63,.07,5,8],['#10182f',.72,.06,7,9]]},
+  studio:{name:'Studio',sky:['#c9ced6','#dfe2e7','#eceef1'],layers:[]}
+};
+function rnd(seed){let s=seed*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+function drawEnv(cv,key){
+  const e=ENVS[key]; if(!e||!e.sky) return;
+  const dpr=Math.min(devicePixelRatio||1,2), w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+  const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,e.sky[0]); g.addColorStop(.55,e.sky[1]); g.addColorStop(1,e.sky[2]); c.fillStyle=g; c.fillRect(0,0,w,h);
+  if(e.stars){const r=rnd(3);for(let i=0;i<Math.round(w*h/2400);i++){c.fillStyle=`rgba(255,255,255,${.25+r()*.6})`;c.beginPath();c.arc(r()*w,r()*h*.6,r()*1.1+.2,0,7);c.fill()}}
+  if(e.sun){const [sx,sy,col]=e.sun,X=sx*w,Y=sy*h,R=Math.max(w,h)*.4;const sg=c.createRadialGradient(X,Y,0,X,Y,R);
+    sg.addColorStop(0,`rgba(${col},.95)`);sg.addColorStop(.06,`rgba(${col},.8)`);sg.addColorStop(.25,`rgba(${col},.25)`);sg.addColorStop(1,`rgba(${col},0)`);c.fillStyle=sg;c.fillRect(0,0,w,h)}
+  const ridge=(x,L)=>{const t=x/w*Math.PI*2*L[3];return h*L[1]-h*L[2]*(Math.sin(t+L[4])*.55+Math.sin(t*2.3+L[4]*1.7)*.28+Math.sin(t*5.1+L[4]*3.1)*.17)};
+  const paint=L=>{c.beginPath();c.moveTo(0,h);for(let x=0;x<=w+6;x+=6)c.lineTo(x,ridge(x,L));c.lineTo(w,h);c.closePath();c.fillStyle=L[0];c.fill()};
+  e.layers.forEach(paint);
+  if(e.water){const wy=h*e.water[0];const wg=c.createLinearGradient(0,wy,0,h);wg.addColorStop(0,e.water[1]);wg.addColorStop(1,e.water[2]);c.fillStyle=wg;c.fillRect(0,wy,w,h-wy);
+    c.save();c.beginPath();c.rect(0,wy,w,h-wy);c.clip();c.globalAlpha=.28;c.translate(0,wy*2);c.scale(1,-1);e.layers.forEach(paint);c.restore()}
+}
+function applyEnv(){
+  if(prefs.env==='wallpaper' && !N) prefs.env='lake';
+  document.body.classList.toggle('wp', prefs.env==='wallpaper');
+  drawEnv($('#env'), prefs.env);
+}
+addEventListener('resize',()=>drawEnv($('#env'),prefs.env));
+
+/* ---------- preview data for Windows (no native bridge) ---------- */
+const C={b:'#4285F4',b2:'#1A73E8',r:'#EA4335',rl:'#F28B82',y:'#FBBC04',y2:'#F29900',g:'#34A853',g2:'#188038',cy:'#12B5CB',pu:'#A142F4',pk:'#F538A0',or:'#FA7B17',or2:'#E8710A',gy:'#5F6368',ink:'#3C4043'};
+function gear(){let d='';for(let i=0;i<16;i++){const r=i%2?13.2:17.5,a0=i/16*Math.PI*2-Math.PI/2,w=Math.PI/16*.62;for(const a of [a0-w,a0+w])d+=(d?'L':'M')+(24+r*Math.cos(a)).toFixed(2)+' '+(24+r*Math.sin(a)).toFixed(2)}return d+'Z'}
+const GL={
+  photos:`<rect x="6" y="9" width="36" height="30" rx="7" fill="#D2E3FC"/><circle cx="31.5" cy="18" r="4.5" fill="${C.y}"/><path d="M6 32 17 21l9 10 5-5 11 6a7 7 0 0 1-7 7H13a7 7 0 0 1-7-7z" fill="${C.g}"/><path d="M18 39 29 28l11 9a7 7 0 0 1-5 2z" fill="${C.b}"/>`,
+  mail:`<rect x="5" y="10" width="38" height="28" rx="6.5" fill="${C.r}"/><path d="M5.6 12.6 24 26.5l18.4-13.9A6.5 6.5 0 0 0 36.5 10h-25a6.5 6.5 0 0 0-5.9 2.6z" fill="${C.rl}"/><path d="M8 14.5 24 26.5l16-12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`,
+  messages:`<path d="M12 7h24a6.5 6.5 0 0 1 6.5 6.5v14A6.5 6.5 0 0 1 36 34H23l-9.5 7.5V34H12a6.5 6.5 0 0 1-6.5-6.5v-14A6.5 6.5 0 0 1 12 7z" fill="${C.b}"/><circle cx="16" cy="20.5" r="2.7" fill="#fff"/><circle cx="24" cy="20.5" r="2.7" fill="#fff"/><circle cx="32" cy="20.5" r="2.7" fill="#fff"/>`,
+  calendar:`<rect x="6" y="7" width="36" height="35" rx="7" fill="#E8F0FE"/><path d="M6 14a7 7 0 0 1 7-7h22a7 7 0 0 1 7 7v4H6z" fill="${C.b}"/><text x="24" y="36.5" text-anchor="middle" font-size="16.5" font-weight="700" fill="${C.b2}" font-family="system-ui,sans-serif">${new Date().getDate()}</text>`,
+  maps:`<ellipse cx="24" cy="41" rx="10" ry="3" fill="${C.g}" opacity=".35"/><path d="M24 42s-12.5-10.8-12.5-21.5a12.5 12.5 0 0 1 25 0C36.5 31.2 24 42 24 42z" fill="${C.r}"/><circle cx="24" cy="20.5" r="5" fill="#fff"/>`,
+  music:`<circle cx="24" cy="24" r="17.5" fill="${C.pu}"/><circle cx="24" cy="24" r="11.5" fill="none" stroke="#C58AF9" stroke-width="1.6"/><circle cx="24" cy="24" r="6.5" fill="#fff"/><circle cx="24" cy="24" r="2.2" fill="${C.pu}"/>`,
+  notes:`<path d="M12.5 6H31l10 10v20a6 6 0 0 1-6 6H12.5a6 6 0 0 1-6-6V12a6 6 0 0 1 6-6z" fill="${C.y}"/><path d="M31 6v6a4 4 0 0 0 4 4h6z" fill="${C.y2}"/><rect x="13" y="22" width="21" height="3.2" rx="1.6" fill="#fff"/><rect x="13" y="29" width="14" height="3.2" rx="1.6" fill="#fff"/>`,
+  files:`<path d="M5.5 14a5 5 0 0 1 5-5h9l4 4h14a5 5 0 0 1 5 5v3h-37z" fill="${C.b2}"/><rect x="11" y="13.5" width="26" height="12" rx="2.5" fill="${C.y}"/><rect x="5.5" y="18" width="37" height="22" rx="5.5" fill="${C.b}"/>`,
+  browser:`<circle cx="24" cy="24" r="17.5" fill="${C.cy}"/><ellipse cx="24" cy="24" rx="7.5" ry="17.5" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M6.5 24h35M9.8 15h28.4M9.8 33h28.4" stroke="#fff" stroke-width="2.6"/>`,
+  weather:`<circle cx="19" cy="18" r="9.5" fill="${C.y}"/><path d="M16.5 39h18a8 8 0 0 0 .9-15.9 10.5 10.5 0 0 0-20 3.2A6.4 6.4 0 0 0 16.5 39z" fill="${C.b}"/>`,
+  meet:`<rect x="4.5" y="12" width="28" height="24" rx="6.5" fill="${C.g}"/><path d="M34.5 20.5 43.5 15v18l-9-5.5z" fill="${C.g2}"/><circle cx="18.5" cy="24" r="5" fill="#fff"/>`,
+  tv:`<rect x="5" y="8.5" width="38" height="26" rx="6.5" fill="${C.ink}"/><path d="M20.5 15.8v11.4l10-5.7z" fill="${C.r}"/><rect x="16" y="37.5" width="16" height="3.6" rx="1.8" fill="#9AA0A6"/>`,
+  home:`<path d="M11 21.5h26V35a5.5 5.5 0 0 1-5.5 5.5h-15A5.5 5.5 0 0 1 11 35z" fill="${C.y}"/><path d="M20 40.5v-8a4 4 0 0 1 8 0v8z" fill="${C.b}"/><path d="M6 23 24 8l18 15" fill="none" stroke="${C.r}" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>`,
+  books:`<path d="M23 12.5C18 9 12 8 5.5 9.5v27C12 35 18 36 23 39.5z" fill="${C.or}"/><path d="M25 12.5C30 9 36 8 42.5 9.5v27C36 35 30 36 25 39.5z" fill="${C.or2}"/>`,
+  fitness:`<path d="M24 41S6.5 30.6 6.5 18.6A9.3 9.3 0 0 1 24 13.4a9.3 9.3 0 0 1 17.5 5.2C41.5 30.6 24 41 24 41z" fill="${C.pk}"/><path d="M10.5 24h6.5l3.2-5.5 5.3 10.5 3.2-5h8.8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`,
+  settings:`<path d="${gear()}" fill="${C.gy}" stroke="${C.gy}" stroke-width="2.4" stroke-linejoin="round"/><circle cx="24" cy="24" r="6" fill="#fff"/>`,
+  translate:`<rect x="5" y="5" width="25" height="25" rx="6.5" fill="${C.g}"/><rect x="17" y="17" width="26" height="26" rx="7" fill="${C.b}" stroke="#fff" stroke-width="2.5"/><text x="30" y="36.5" text-anchor="middle" font-size="16" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">A</text>`,
+  clock:`<circle cx="24" cy="24" r="18" fill="#E8F0FE"/><circle cx="24" cy="24" r="18" fill="none" stroke="${C.b}" stroke-width="3.2"/><path d="M24 24v-9M24 24l7 4" stroke="${C.ink}" stroke-width="3" stroke-linecap="round"/>`
+};
+const svgIcon = k => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#fff"/><g transform="translate(12.8 12.8) scale(.8)">${GL[k]}</g></svg>`);
+const SAMPLE_APPS = [
+  ['Mail','mail',7],['Calendar','calendar',7],['Notes','notes',7],['Files','files',7],['Translate','translate',7],['Clock','clock',7],
+  ['Messages','messages',4],['Meet','meet',4],['Browser','browser',-1],['Maps','maps',6],['Photos','photos',3],['Music','music',1],
+  ['TV','tv',2],['Books','books',5],['Weather','weather',-1],['Home','home',-1],['Fitness','fitness',-1],['Settings','settings',-1]
+].map(([label,k,cat])=>({label,pkg:'sample.'+k,cmp:'sample.'+k+'/.Main',cat,src:svgIcon(k)}));
+function sampleEvents(){
+  const d=new Date(), t0=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(), H=36e5, D=24*H;
+  const mk=(id,title,start,dur,color,loc='',allDay=false)=>({id,title,begin:start,end:start+dur,color,loc,allDay});
+  const half=Math.ceil(Date.now()/(30*60e3))*30*60e3, hd=new Date(t0+2*D);
+  return [
+    mk(1,'Writing block',half-30*60e3,H,0xff4285f4,'Office'),
+    mk(2,'Group meeting',half+2*H,H,0xffea4335,'Room 1B14'),
+    mk(3,'Workshop planning',t0+D+16*H,H,0xff34a853),
+    mk(4,'Holiday',Date.UTC(hd.getFullYear(),hd.getMonth(),hd.getDate()),D,0xff12b5cb,'',true),
+    mk(5,'Committee call',t0+3*D+10*H,H,0xfffbbc04,'Video call'),
+    mk(6,'Lab check-in',t0+4*D+12.5*H,H,0xffa142f4,'Room 1B14')
+  ];
+}
+
+/* ---------- apps ---------- */
+let APPS = [];
+const CATS = {7:'Productivity',4:'Communication',1:'Media',2:'Media',3:'Media',6:'Maps & travel',5:'News & reading',0:'Games',8:'Tools'};
+const catName = c => CATS[c] || 'Everything else';
+const GROUP_ORDER = ['Productivity','Communication','Media','Maps & travel','News & reading','Games','Tools','Everything else'];
+function loadApps(){
+  if(N){ try{ APPS = JSON.parse(N.apps()) }catch(e){ APPS = [] } } else APPS = SAMPLE_APPS.slice();
+  APPS.sort((a,b)=>a.label.localeCompare(b.label, undefined, {sensitivity:'base'}));
+}
+const iconSrc = a => N ? `https://horizon.app/icon?c=${encodeURIComponent(a.cmp)}&s=${prefs.icons==='themed'?'mono':'color'}` : a.src;
+const appBtn = a => `<button class="app" data-cmp="${esc(a.cmp)}" aria-label="${esc(a.label)}"><img class="ico" src="${iconSrc(a)}" alt="" loading="lazy" decoding="async" draggable="false"><span class="nm">${esc(a.label)}</span></button>`;
+const byCmp = c => APPS.find(a=>a.cmp===c);
+
+const PREFERRED = ['com.google.android.gm','com.google.android.calendar','com.android.chrome','com.google.android.apps.docs','com.Slack',
+  'com.microsoft.teams','com.google.android.keep','com.google.android.apps.tasks','com.microsoft.office.outlook','us.zoom.videomeetings','notion.id','com.whatsapp'];
+let pins = store.get('hz-pins', null);
+function ensurePins(){
+  if(Array.isArray(pins)){ if(APPS.length) pins = pins.filter(byCmp); return }
+  const pick = [];
+  for(const p of PREFERRED){ const a = APPS.find(x=>x.pkg===p); if(a && pick.length<8) pick.push(a.cmp) }
+  for(const a of APPS){ if(pick.length>=8) break; if(!pick.includes(a.cmp)) pick.push(a.cmp) }
+  pins = pick;
+}
+const savePins = () => store.set('hz-pins', pins);
+
+function renderPins(){
+  if(!$('#pins')) return;
+  const list = pins.map(byCmp).filter(Boolean);
+  $('#pins').innerHTML = list.length ? list.map(appBtn).join('')
+    : `<p class="empty" style="grid-column:1/-1"><b>Nothing pinned yet</b>Open All apps and long-press an app to pin it here.</p>`;
+}
+function renderAppList(){
+  const box = $('#appList');
+  $('#sortGroups').setAttribute('aria-pressed', prefs.sort==='groups'); $('#sortAZ').setAttribute('aria-pressed', prefs.sort==='az');
+  if(!APPS.length){ box.innerHTML = `<section class="card"><p class="empty"><b>No apps found</b>Horizon couldn't read the app list.</p></section>`; return }
+  if(prefs.sort==='az'){
+    box.innerHTML = `<section class="card grp"><h3>All apps <span>${APPS.length}</span></h3><div class="agrid">${APPS.map(appBtn).join('')}</div></section>`;
+    return;
+  }
+  const groups = {};
+  APPS.forEach(a=>{ const g=catName(a.cat); (groups[g]=groups[g]||[]).push(a) });
+  box.innerHTML = GROUP_ORDER.filter(g=>groups[g]).map(g=>`<section class="card grp"><h3>${g} <span>${groups[g].length}</span></h3><div class="agrid">${groups[g].map(appBtn).join('')}</div></section>`).join('');
+}
+
+function launch(cmp){
+  const a = byCmp(cmp); if(!a) return;
+  if(N) N.launch(cmp); else toast(`On the phone this opens ${a.label}`);
+  clearSearch();
+}
+
+/* ---------- calendar ---------- */
+let EVENTS = [], calState = 'ok', agendaAll = false;
+function loadEvents(){
+  if(!N){ EVENTS = sampleEvents(); calState='ok'; return }
+  if(!N.calendarAllowed()){ EVENTS=[]; calState='need'; return }
+  try{ EVENTS = JSON.parse(N.events(7)) }catch(e){ EVENTS = [] }
+  calState='ok';
+}
+const hex = c => '#' + ((c>>>0)&0xffffff).toString(16).padStart(6,'0');
+const tfmt = ms => new Date(ms).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+const todayStart = () => { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime() };
+function normEvents(){
+  const now = Date.now(), today = todayStart();
+  // phone calendars (incl. Outlook if its calendar sync is on) + Outlook via Microsoft sign-in, without duplicates
+  const seen = new Set(EVENTS.map(e=>(e.title||'').toLowerCase()+'|'+Math.round(e.begin/60e3)));
+  const extra = ms.on ? MSEVENTS.filter(e=>!seen.has((e.title||'').toLowerCase()+'|'+Math.round(e.begin/60e3))) : [];
+  return EVENTS.concat(extra).map(e=>{
+    let s=e.begin, en=e.end;
+    if(e.allDay){ const a=new Date(e.begin), b=new Date(e.end);
+      s=new Date(a.getUTCFullYear(),a.getUTCMonth(),a.getUTCDate()).getTime(); en=new Date(b.getUTCFullYear(),b.getUTCMonth(),b.getUTCDate()).getTime(); }
+    return {...e, s, en};
+  }).filter(e => e.allDay ? e.en > today : e.en > now)
+    .filter(e => e.s < today + 8*864e5)
+    .sort((a,b)=> (Math.max(a.s,today)-Math.max(b.s,today)) || (b.allDay-a.allDay) || (a.s-b.s));
+}
+function dayLabel(ms){
+  const diff=Math.floor((ms-todayStart())/864e5);
+  if(diff<=0) return 'Today'; if(diff===1) return 'Tomorrow';
+  return new Date(ms).toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+}
+function renderAgenda(){
+  const box=$('#agenda');
+  if(calState==='need' && !ms.on){
+    box.innerHTML = `<div class="empty"><b>See your next meetings here</b>Horizon reads events from the calendars on this phone. Nothing leaves the device.<br><button class="btn" id="calAllow">Allow calendar access</button></div>`;
+    $('#calAllow').onclick = () => N && N.requestCalendar();
+    return;
+  }
+  const list = normEvents();
+  if(!list.length){ box.innerHTML = `<p class="empty"><b>Nothing scheduled</b>Your next 7 days are clear.</p>`; return }
+  const now=Date.now(), shown = agendaAll ? list : list.slice(0,5);
+  let html='', last='';
+  for(const e of shown){
+    const dl = dayLabel(Math.max(e.s, todayStart()));
+    if(dl!==last){ html += `<div class="dayh">${dl}</div>`; last=dl }
+    const live = !e.allDay && e.s<=now && e.en>now;
+    const tm = e.allDay ? 'All day' : live ? `until ${tfmt(e.en)}` : tfmt(e.s);
+    const meta = [e.allDay ? '' : `${tfmt(e.s)} – ${tfmt(e.en)}`, e.loc].filter(Boolean).join(' · ');
+    html += `<button class="ev${live?' now':''}" data-ev="${e.id}" style="--c:${hex(e.color)}"><span class="dot"></span><span class="tx"><span class="t">${live?'<span class="pill">Now</span>':''}${esc(e.title||'(No title)')}</span>${meta?`<span class="m">${esc(meta)}</span>`:''}</span><span class="tm">${tm}</span></button>`;
+  }
+  if(list.length>5) html += `<button class="act" id="agMore" style="margin-top:4px">${agendaAll?'Show less':`Show all ${list.length}`}</button>`;
+  box.innerHTML = html;
+  const m=$('#agMore'); if(m) m.onclick=()=>{agendaAll=!agendaAll; renderAgenda()};
+}
+hz.onCalendarPermission = ok => { loadEvents(); renderAgenda(); if(!ok) toast('Calendar access was not allowed') };
+$('#newEvent').onclick = () => N ? N.newEvent() : toast('On the phone this creates a calendar event');
+
+/* ---------- native async bridge (network + Microsoft Graph run in Java, answer via hz.onFetch) ---------- */
+const pending = {}; let fid = 0;
+function nativeCall(fn){
+  return new Promise((res,rej)=>{
+    const id='f'+(++fid); pending[id]={res,rej};
+    setTimeout(()=>{ if(pending[id]){ delete pending[id]; rej(new Error('timeout')) } }, 20000);
+    try{ fn(id) }catch(e){ delete pending[id]; rej(e) }
+  });
+}
+hz.onFetch = (id, ok, text) => { const p=pending[id]; if(!p) return; delete pending[id]; ok ? p.res(text) : p.rej(new Error(text||'failed')) };
+const nfetch = url => N && N.fetchText ? nativeCall(id=>N.fetchText(id, url)) : Promise.reject(new Error('preview'));
+const graph = (method, path, body) => nativeCall(id=>N.msGraph(id, method, path, body ? JSON.stringify(body) : '')).then(t => t ? JSON.parse(t) : {});
+
+/* ---------- Microsoft account: To Do tasks + Outlook calendar ---------- */
+const ms = {on:false, name:'', mock:false};
+function loadMs(){
+  if(N && N.msStatus){ try{ const s=JSON.parse(N.msStatus()); ms.on=!!s.signedIn; ms.name=s.name||'' }catch(e){} }
+  else { ms.on = !!store.get('hz-ms-mock', false); ms.mock = ms.on; ms.name = ms.on ? 'preview@example.com' : '' }
+}
+let MSTASKS = store.get('hz-ms-tasks', []), MSLISTS = store.get('hz-ms-lists', []), MSEVENTS = store.get('hz-ms-events', []);
+let msSyncing = false, msErr = '';
+const OUTLOOK_BLUE = 0xff0f6cbd;
+function sampleMs(){
+  const t0=todayStart(), H=36e5, D=24*H, half=Math.ceil(Date.now()/(30*60e3))*30*60e3;
+  MSLISTS=[{id:'L1',name:'Tasks',def:true},{id:'L2',name:'Research',def:false}];
+  MSTASKS=[
+    {id:'m1',listId:'L2',list:'Research',t:'Sample: send revised figures to coauthors',imp:true,due:t0+D},
+    {id:'m2',listId:'L1',list:'Tasks',t:'Sample: approve travel request',imp:false,due:t0-D},
+    {id:'m3',listId:'L1',list:'Tasks',t:'Sample: reply about course schedule',imp:false,due:0}];
+  MSEVENTS=[
+    {id:'ms0',ms:true,url:'',title:'Sample Outlook: faculty meeting',begin:half+H,end:half+2*H,allDay:false,loc:'Teams',color:OUTLOOK_BLUE},
+    {id:'ms1',ms:true,url:'',title:'Sample Outlook: office hours',begin:t0+D+13*H,end:t0+D+14*H,allDay:false,loc:'Room 312',color:OUTLOOK_BLUE}];
+}
+async function syncMs(force){
+  if(!ms.on || msSyncing) return;
+  if(ms.mock){ if(!MSTASKS.length || force) sampleMs(); renderTasks(); renderAgenda(); return }
+  if(!force && Date.now()-store.get('hz-ms-at',0) < 5*60e3) return;
+  msSyncing = true; renderTasks();
+  try{
+    const lists = (await graph('GET','/me/todo/lists')).value || [];
+    const tasks = [];
+    for(const l of lists.slice(0,15)){
+      const r = await graph('GET', `/me/todo/lists/${encodeURIComponent(l.id)}/tasks?$filter=status%20ne%20'completed'&$top=100`);
+      (r.value||[]).forEach(t => tasks.push({id:t.id, listId:l.id, list:l.displayName, t:t.title||'(Untitled)', imp:t.importance==='high',
+        due: t.dueDateTime ? Date.parse(t.dueDateTime.dateTime.slice(0,19)+'Z') : 0}));
+    }
+    tasks.sort((a,b)=>(b.imp-a.imp) || ((a.due||9e15)-(b.due||9e15)));
+    MSTASKS = tasks;
+    MSLISTS = lists.map(l=>({id:l.id, name:l.displayName, def:l.wellknownListName==='defaultList'}));
+    const s = new Date(todayStart()).toISOString(), e = new Date(todayStart()+8*864e5).toISOString();
+    const cv = await graph('GET', `/me/calendarView?startDateTime=${s}&endDateTime=${e}&$top=100&$orderby=start/dateTime&$select=subject,start,end,isAllDay,location,webLink,isCancelled`);
+    const utc = x => Date.parse(x.dateTime.slice(0,19)+'Z');
+    const day = x => { const [y,m,d] = x.dateTime.slice(0,10).split('-').map(Number); return Date.UTC(y,m-1,d) };
+    MSEVENTS = (cv.value||[]).filter(x=>!x.isCancelled).map((x,i)=>({id:'ms'+i, ms:true, url:x.webLink||'', title:x.subject||'(No title)',
+      allDay:!!x.isAllDay, begin: x.isAllDay ? day(x.start) : utc(x.start), end: x.isAllDay ? day(x.end) : utc(x.end),
+      loc:(x.location && x.location.displayName) || '', color:OUTLOOK_BLUE}));
+    store.set('hz-ms-tasks', MSTASKS); store.set('hz-ms-lists', MSLISTS); store.set('hz-ms-events', MSEVENTS); store.set('hz-ms-at', Date.now());
+    msErr = '';
+  }catch(e){
+    msErr = /HTTP 401|invalid_grant|not signed in/i.test(e.message) ? 'Microsoft sign-in expired. Sign in again from Settings.'
+          : /HTTP 403/.test(e.message) ? 'Your organization blocked Horizon from reading To Do or Calendar.'
+          : 'Couldn’t reach Microsoft. Showing the last synced items.';
+  }
+  msSyncing = false; renderTasks(); renderAgenda();
+}
+hz.onMsAuth = (ok, msg) => {
+  loadMs();
+  if(ok){ toast(`Signed in as ${msg}`); syncMs(true) } else toast(msg || 'Microsoft sign-in didn’t finish');
+  if(!wrap.hidden) settingsSheet();
+  renderTasks(); renderAgenda();
+};
+const syncedAgo = () => { const a=store.get('hz-ms-at',0); if(!a) return ''; const m=Math.round((Date.now()-a)/60e3); return m<1?'Synced just now':`Synced ${m} min ago` };
+function openTodoApp(){ const a=APPS.find(x=>x.pkg==='com.microsoft.todos'); a ? launch(a.cmp) : (N ? N.openUrl('https://to-do.office.com/tasks/') : toast('On the phone this opens Microsoft To Do')) }
+
+/* ---------- tasks: Microsoft To Do when signed in, otherwise kept on this phone ---------- */
+let TASKS = store.get('hz-tasks', N ? [] : [
+  {id:1,t:'Reply to reviewer comments',d:false},{id:2,t:'Update project graphs',d:false},{id:3,t:'Draft course evaluation notes',d:false},{id:4,t:'Book room for workshop',d:true}]);
+const saveTasks = () => store.set('hz-tasks', TASKS);
+const ICK = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function dueLabel(ms_){
+  if(!ms_) return ''; const diff = Math.floor((ms_ - Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()))/864e5);
+  if(diff<0) return 'Overdue'; if(diff===0) return 'Due today'; if(diff===1) return 'Due tomorrow';
+  return 'Due ' + new Date(ms_).toLocaleDateString([], {weekday:'short', month:'short', day:'numeric', timeZone:'UTC'});
+}
+function renderTasks(){
+  const box = $('#tasks');
+  if(ms.on){
+    $('#taskInput').placeholder = 'Add to Microsoft To Do';
+    $('#taskMeta').textContent = msSyncing ? 'Syncing…' : `To Do · ${MSTASKS.length} open`;
+    const row = t => { const due=dueLabel(t.due), late=due==='Overdue';
+      return `<div class="task${t.d?' done':''}"><button class="ck" data-mt="${esc(t.id)}" aria-label="Complete: ${esc(t.t)}">${ICK}</button><span class="tt">${t.imp?'<b style="color:var(--danger)">! </b>':''}${esc(t.t)}<small style="display:block;font-size:12.5px;color:${late?'var(--danger)':'var(--fg-3)'};margin-top:2px">${esc(t.list)}${due?' · '+due:''}</small></span></div>` };
+    let html = msErr ? `<p class="empty" style="color:var(--danger);padding-top:2px">${esc(msErr)}</p>` : '';
+    html += MSTASKS.length ? MSTASKS.slice(0,8).map(row).join('') : (msSyncing ? '' : `<p class="empty" style="padding-top:2px">Nothing open in To Do.</p>`);
+    html += `<div class="tfoot"><span>${MSTASKS.length>8?`+${MSTASKS.length-8} more · `:''}${syncedAgo()}</span><span><button class="act" id="msSync">Sync</button><button class="act" id="openTodo">Open To Do</button></span></div>`;
+    box.innerHTML = html;
+    $('#msSync').onclick = () => syncMs(true);
+    $('#openTodo').onclick = openTodoApp;
+    return;
+  }
+  $('#taskInput').placeholder = 'Add a task';
+  const open = TASKS.filter(t=>!t.d), done = TASKS.filter(t=>t.d);
+  $('#taskMeta').textContent = open.length ? `${open.length} open` : '';
+  const row = t => `<div class="task${t.d?' done':''}"><button class="ck" data-tk="${t.id}" aria-label="${t.d?'Mark not done':'Mark done'}: ${esc(t.t)}">${ICK}</button><span class="tt">${esc(t.t)}</span><button class="del" data-del="${t.id}" aria-label="Delete ${esc(t.t)}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
+  let html = open.length ? open.map(row).join('') : `<p class="empty" style="padding-top:2px">All clear. Add the next thing above.</p>`;
+  if(done.length) html += done.map(row).join('') + `<div class="tfoot"><span>${done.length} done</span><button class="act" id="clearDone">Clear done</button></div>`;
+  box.innerHTML = html;
+  const cd=$('#clearDone'); if(cd) cd.onclick=()=>{TASKS=TASKS.filter(t=>!t.d); saveTasks(); renderTasks()};
+}
+$('#addTask').addEventListener('submit', async e=>{
+  e.preventDefault(); const v=$('#taskInput').value.trim(); if(!v) return; $('#taskInput').value='';
+  if(!ms.on){ TASKS.unshift({id:Date.now(), t:v, d:false}); saveTasks(); renderTasks(); return }
+  const list = MSLISTS.find(l=>l.def) || MSLISTS[0];
+  const tmp = {id:'tmp'+Date.now(), listId:list?list.id:'', list:list?list.name:'Tasks', t:v, imp:false, due:0};
+  MSTASKS.unshift(tmp); renderTasks();
+  if(ms.mock) return;
+  try{ const r = await graph('POST', `/me/todo/lists/${encodeURIComponent(tmp.listId)}/tasks`, {title:v}); tmp.id = r.id; store.set('hz-ms-tasks', MSTASKS) }
+  catch(err){ MSTASKS = MSTASKS.filter(x=>x!==tmp); renderTasks(); toast('Couldn’t add to To Do. Check your connection.') }
+});
+$('#tasks').addEventListener('click', async e=>{
+  const ck=e.target.closest('[data-tk]'), del=e.target.closest('[data-del]'), mt=e.target.closest('[data-mt]');
+  if(ck){ const t=TASKS.find(x=>x.id==ck.dataset.tk); t.d=!t.d; saveTasks(); renderTasks() }
+  if(del){ TASKS=TASKS.filter(x=>x.id!=del.dataset.del); saveTasks(); renderTasks() }
+  if(mt){
+    const t = MSTASKS.find(x=>x.id===mt.dataset.mt); if(!t || t.d) return;
+    t.d = true; renderTasks();
+    setTimeout(()=>{ MSTASKS = MSTASKS.filter(x=>x!==t); store.set('hz-ms-tasks', MSTASKS); renderTasks() }, 900);
+    if(ms.mock) return;
+    try{ await graph('PATCH', `/me/todo/lists/${encodeURIComponent(t.listId)}/tasks/${encodeURIComponent(t.id)}`, {status:'completed'}) }
+    catch(err){ t.d=false; MSTASKS.unshift(t); renderTasks(); toast('Couldn’t update To Do. Try again.') }
+  }
+});
+
+/* ---------- Now page (left of Today) ---------- */
+const TOPIC_PRESETS = [['top','Top stories'],['TECHNOLOGY','Technology'],['SCIENCE','Science'],['BUSINESS','Business'],['WORLD','World'],['HEALTH','Health']];
+const topicLabel = t => (TOPIC_PRESETS.find(p=>p[0]===t) || [t, t.replace(/\b\w/g, c=>c.toUpperCase())])[1];
+let topic = prefs.topics[0] || 'top';
+function feedUrl(t){
+  const tail = 'hl=en-US&gl=US&ceid=US:en';
+  if(t==='top') return `https://news.google.com/rss?${tail}`;
+  if(/^[A-Z]+$/.test(t)) return `https://news.google.com/rss/headlines/section/topic/${t}?${tail}`;
+  return `https://news.google.com/rss/search?q=${encodeURIComponent(t)}%20when%3A3d&${tail}`;
+}
+function parseRss(xml){
+  const d = new DOMParser().parseFromString(xml, 'text/xml');
+  return [...d.querySelectorAll('item')].map(it=>{
+    const g = s => (it.querySelector(s)||{}).textContent || '';
+    const src = g('source'); let title = g('title');
+    if(src && title.endsWith(' - '+src)) title = title.slice(0, -(src.length+3));
+    return {title, link:g('link'), src, at:Date.parse(g('pubDate'))||0};
+  });
+}
+const ago = t => { if(!t) return ''; const m=Math.round((Date.now()-t)/60e3); if(m<60) return `${Math.max(m,1)} min ago`; const h=Math.round(m/60); return h<24 ? `${h} hr ago` : `${Math.round(h/24)} d ago` };
+const SRC_COLORS = ['#4285F4','#EA4335','#34A853','#F29900','#A142F4','#12B5CB','#E8710A','#F538A0'];
+const srcColor = s => SRC_COLORS[[...s].reduce((a,c)=>a+c.charCodeAt(0),0) % SRC_COLORS.length];
+function sampleNews(t){
+  const l = topicLabel(t).toLowerCase();
+  return [1,2,3,4,5].map(i=>({title:`Sample ${l} headline ${i}. On the phone, real stories load here.`, link:'', src:'Sample source', at:Date.now()-i*47*60e3}));
+}
+let newsState = 'idle';
+async function loadNews(force){
+  const t = topic, key = 'hz-news-'+t, cache = store.get(key, null);
+  if(!N){ renderNews(sampleNews(t)); return }
+  if(cache && !force && Date.now()-cache.at < 15*60e3){ renderNews(cache.items); return }
+  newsState = 'loading'; renderNews(cache ? cache.items : []);
+  try{ const items = parseRss(await nfetch(feedUrl(t))).slice(0,10); store.set(key, {at:Date.now(), items}); newsState='ok'; if(t===topic) renderNews(items) }
+  catch(e){ newsState = 'error'; if(t===topic) renderNews(cache ? cache.items : []) }
+}
+function renderNews(items){
+  $('#topics').innerHTML = prefs.topics.map(t=>`<button class="chip" data-topic="${esc(t)}" aria-pressed="${t===topic}">${esc(topicLabel(t))}</button>`).join('');
+  let html = '';
+  if(newsState==='loading' && !items.length) html = `<p class="empty">Loading stories…</p>`;
+  else if(newsState==='error' && !items.length) html = `<p class="empty"><b>Couldn’t load stories</b>Check your connection, then tap Refresh.</p>`;
+  else html = items.map(s=>`<button class="story" data-url="${esc(s.link)}"><span class="src"><i style="--c:${srcColor(s.src||'?')}">${esc((s.src||'?')[0])}</i>${esc(s.src)}${s.at?' · '+ago(s.at):''}</span><span class="st">${esc(s.title)}</span></button>`).join('');
+  $('#news').innerHTML = html;
+}
+$('#topics').addEventListener('click', e=>{ const b=e.target.closest('[data-topic]'); if(!b) return; topic=b.dataset.topic; newsState='idle'; loadNews() });
+$('#news').addEventListener('click', e=>{ const b=e.target.closest('[data-url]'); if(!b) return; const u=b.dataset.url; u && N ? N.openUrl(u) : toast('On the phone this opens the story') });
+$('#newsRefresh').onclick = () => loadNews(true);
+
+/* weather: Open-Meteo, approximate location from the phone */
+const WX_NAMES = {0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Cloudy',45:'Fog',48:'Fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Showers',81:'Showers',82:'Heavy showers',85:'Snow showers',86:'Snow showers',95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'};
+function wxIcon(code, day){
+  const cloud = (y=0,f='#AECBFA') => `<path transform="translate(0 ${y})" d="M15 38h20a8.5 8.5 0 0 0 1-17 11 11 0 0 0-21 3.5A7 7 0 0 0 15 38z" fill="${f}"/>`;
+  const sun = (cx=24,cy=24,r=9) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#FBBC04"/>`;
+  const moon = (s=1,x=0,y=0) => `<path transform="translate(${x} ${y}) scale(${s})" d="M29 7a17 17 0 1 0 12 28A14 14 0 0 1 29 7z" fill="#A8C7FA"/>`;
+  let g;
+  if(code===0) g = day ? sun()+`<path d="M24 5v4M24 39v4M5 24h4M39 24h4M10.6 10.6l2.8 2.8M34.6 34.6l2.8 2.8M10.6 37.4l2.8-2.8M34.6 13.4l2.8-2.8" stroke="#FBBC04" stroke-width="3.4" stroke-linecap="round"/>` : moon();
+  else if(code<=2) g = (day ? sun(18,17,9) : moon(.62,4,2)) + cloud(3);
+  else if(code===3) g = cloud(-2,'#9AB6E8');
+  else if(code<=48) g = `<path d="M8 18h32M12 26h26M8 34h30" stroke="#9AA0A6" stroke-width="4" stroke-linecap="round"/>`;
+  else if(code<=67 || (code>=80 && code<=82)) g = cloud(-6,'#8AB4F8') + `<path d="M17 38l-2.5 5M25 38l-2.5 5M33 38l-2.5 5" stroke="#4285F4" stroke-width="3.2" stroke-linecap="round"/>`;
+  else if(code<=86) g = cloud(-6,'#AECBFA') + `<circle cx="16" cy="40" r="2.4" fill="#8AB4F8"/><circle cx="24" cy="43" r="2.4" fill="#8AB4F8"/><circle cx="32" cy="40" r="2.4" fill="#8AB4F8"/>`;
+  else g = cloud(-6,'#7C9BD6') + `<path d="M26 30l-6 9h5l-3 7 9-11h-5l3-5z" fill="#FBBC04"/>`;
+  return `<svg viewBox="0 0 48 48" aria-hidden="true">${g}</svg>`;
+}
+let wx = store.get('hz-wx', null);
+function sampleWx(){
+  const p2=n=>String(n).padStart(2,'0'), loc=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}T${p2(d.getHours())}:00`;
+  const now=new Date(), hrs=[...Array(6)].map((_,i)=>loc(new Date(now.getTime()+(i+1)*36e5)));
+  return {at:Date.now(), place:'Sample city', units:prefs.units, sample:true, data:{current:{temperature_2m:18,apparent_temperature:17,weather_code:2,is_day:1,time:loc(now)},
+    hourly:{time:hrs, temperature_2m:[18,19,19,17,15,14], weather_code:[2,2,3,61,61,3], is_day:[1,1,1,1,0,0]},
+    daily:{temperature_2m_max:[21], temperature_2m_min:[9], precipitation_probability_max:[40]}}};
+}
+function loadWeather(force){
+  if(!N){ renderWeather(sampleWx()); return }
+  if(!N.locationAllowed()){ renderWeather(null, 'need'); return }
+  if(wx && !force && Date.now()-wx.at < 20*60e3 && wx.units===prefs.units){ renderWeather(wx); return }
+  renderWeather(wx, 'loading'); N.requestLocationFix();
+}
+hz.onLocation = async (lat, lon, place) => {
+  if(lat==null){ renderWeather(wx, 'noloc'); return }
+  try{
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&current=temperature_2m,apparent_temperature,weather_code,is_day&hourly=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=2&temperature_unit=${prefs.units==='F'?'fahrenheit':'celsius'}`;
+    wx = {at:Date.now(), place:place||'', units:prefs.units, data:JSON.parse(await nfetch(u))}; store.set('hz-wx', wx); renderWeather(wx);
+  }catch(e){ renderWeather(wx, 'error') }
+};
+hz.onLocationPermission = ok => ok ? loadWeather(true) : renderWeather(null, 'denied');
+function renderWeather(w, state){
+  const box = $('#wx');
+  const msg = (b, t, btn) => `<div class="ch"><h2><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="4"/><path d="M8 19h9a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.4 1.6A3.3 3.3 0 0 0 8 19z"/></svg>Weather</h2></div><div class="empty"><b>${b}</b>${t}${btn||''}</div>`;
+  if(!w || !w.data){
+    if(state==='need') box.innerHTML = msg('See local weather', 'Horizon sends your approximate location to Open-Meteo to get the forecast.', '<br><button class="btn" id="wxAllow">Use my location</button>');
+    else if(state==='denied') box.innerHTML = msg('Location is off for Horizon', 'Turn on Location for Horizon in App info to see the forecast.', '<br><button class="btn" id="wxInfo">Open App info</button>');
+    else if(state==='noloc') box.innerHTML = msg('Couldn’t find your location', 'Turn on Location in quick settings, then pull up the forecast again.', '<br><button class="btn" id="wxRetry">Try again</button>');
+    else if(state==='error') box.innerHTML = msg('Couldn’t load the forecast', 'Check your connection.', '<br><button class="btn" id="wxRetry">Try again</button>');
+    else box.innerHTML = msg('Getting the forecast…', '');
+    const a=$('#wxAllow'); if(a) a.onclick=()=>N.requestLocation();
+    const i=$('#wxInfo'); if(i) i.onclick=()=>N.appInfo('com.praiselab.horizon');
+    const r=$('#wxRetry'); if(r) r.onclick=()=>loadWeather(true);
+    return;
+  }
+  const d = w.data, c = d.current, u = '°';
+  const nowKey = (c.time||'').slice(0,13); let i0 = d.hourly.time.findIndex(t=>t.slice(0,13)===nowKey); i0 = i0<0 ? 0 : i0+1;
+  const hrs = [...Array(6)].map((_,k)=>i0+k).filter(k=>k<d.hourly.time.length);
+  const hlabel = t => { const h=+t.slice(11,13); return (h%12||12) + (h<12?' AM':' PM') };
+  box.innerHTML = `<div class="wxplace"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/></svg>${esc(w.place || 'Your area')}${w.sample?' · sample forecast':''}${state==='loading'?' · updating…':''}</div>
+    <div class="wxtop"><div class="wi">${wxIcon(c.weather_code, c.is_day)}</div><div style="min-width:0">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="wxtemp">${Math.round(c.temperature_2m)}${u}</span><span class="wxcond">${WX_NAMES[c.weather_code]||''}</span></div>
+      <div class="wxmeta">Feels ${Math.round(c.apparent_temperature)}${u} · H ${Math.round(d.daily.temperature_2m_max[0])}${u} L ${Math.round(d.daily.temperature_2m_min[0])}${u} · Rain ${d.daily.precipitation_probability_max[0]??0}%</div></div></div>
+    <div class="hours">${hrs.map(k=>`<div><small>${hlabel(d.hourly.time[k])}</small>${wxIcon(d.hourly.weather_code[k], d.hourly.is_day[k])}<b>${Math.round(d.hourly.temperature_2m[k])}${u}</b></div>`).join('')}</div>`;
+}
+
+function renderNowNext(){
+  const box = $('#nowNext');
+  if(!box) return;
+  if(calState==='need' && !ms.on){ box.innerHTML = `<p class="empty"><b>Your next meeting shows here</b>Allow calendar access on the Today page.</p>`; return }
+  const now = Date.now(), e = normEvents().find(x=>!x.allDay);
+  if(!e){ box.innerHTML = `<div class="big-next"><span class="when">Free</span><span class="what">No more meetings in the next 7 days</span></div>`; return }
+  const mins = Math.round((e.s-now)/60e3);
+  const when = e.s<=now ? `Now · until ${tfmt(e.en)}` : mins<60 ? `In ${mins} min` : dayLabel(e.s)==='Today' ? `Today at ${tfmt(e.s)}` : `${dayLabel(e.s)} at ${tfmt(e.s)}`;
+  box.innerHTML = `<button class="big-next" data-ev="${e.id}"><span class="when">${when}</span><span class="what">${esc(e.title||'(No title)')}</span><span class="m">${tfmt(e.s)} – ${tfmt(e.en)}${e.loc?' · '+esc(e.loc):''}</span></button>`;
+}
+function greet(){ const h=new Date().getHours(); return h<5?'Good night':h<12?'Good morning':h<17?'Good afternoon':'Good evening' }
+function enterNow(){
+  $('#greet').textContent = greet() + (ms.on && ms.name && !ms.mock ? '' : '');
+  $('#nowDate').textContent = new Date().toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+  renderNowNext(); loadWeather(); loadNews();
+}
+$('#discoverBtn').onclick = () => N ? N.openGoogleFeed() : toast('On the phone this opens Google Discover in the Google app');
+
+/* ---------- focus timer ---------- */
+let focus = store.get('hz-focus', {dur:35, end:0});
+const CIRC = 2*Math.PI*36;
+function renderFocus(){
+  const running = focus.end > Date.now();
+  const left = running ? focus.end - Date.now() : focus.dur*60e3;
+  const mm = Math.floor(left/60e3), ss = Math.floor(left%60e3/1e3);
+  $('#ringText').textContent = `${mm}:${String(ss).padStart(2,'0')}`;
+  $('#ringArc').setAttribute('stroke-dashoffset', (CIRC*(1-left/(focus.dur*60e3))).toFixed(1));
+  $('#focusMeta').textContent = running ? `Ends ${tfmt(focus.end)}` : '';
+  $('#focusState').textContent = running ? 'Focusing. Back here when the ring empties.' : 'Pick a length, then start.';
+  const want = running ? 'run' : 'idle'+focus.dur;
+  if($('#focusChips').dataset.state !== want){
+    $('#focusChips').dataset.state = want;
+    $('#focusChips').innerHTML = running
+      ? `<button class="chip" data-f="stop">Stop</button><button class="chip" data-f="add">+5 min</button>`
+      : [25,35,50].map(m=>`<button class="chip" data-f="${m}" aria-pressed="${focus.dur===m}">${m}</button>`).join('') + `<button class="chip go" data-f="start">Start</button>`;
+  }
+}
+$('#focusChips').addEventListener('click', e=>{
+  const b=e.target.closest('[data-f]'); if(!b) return; const f=b.dataset.f;
+  if(f==='start') focus.end = Date.now()+focus.dur*60e3;
+  else if(f==='stop') focus.end = 0;
+  else if(f==='add'){ focus.end += 5*60e3; focus.dur += 5 }
+  else focus.dur = +f;
+  store.set('hz-focus', focus); renderFocus();
+});
+setInterval(()=>{
+  if(focus.end && focus.end <= Date.now()){
+    focus.end = 0; store.set('hz-focus', focus); N && N.vibrate(); toast(`${focus.dur}-minute focus session done`);
+  }
+  if(FEED || !$('#today').hidden) renderFocus();
+}, 1000);
+
+/* ---------- clock ---------- */
+function tick(){ const d=new Date();
+  $('#clock').textContent = d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).replace(/\s?[AP]M$/i,'');
+  $('#dateline').textContent = d.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'}); }
+setInterval(tick, 5000);
+
+/* ---------- pages ---------- */
+let page='today';
+const ICON_APPS = '<svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/></svg>';
+const ICON_HOME = '<svg viewBox="0 0 24 24"><path d="M4 11.2l8-6.6 8 6.6v7.6a1.4 1.4 0 0 1-1.4 1.4H15v-5.4H9v5.4H5.4A1.4 1.4 0 0 1 4 18.8z"/></svg>';
+const ORDER = ['now','today','apps'];
+function show(p){
+  if(p===page) return;
+  const dir = ORDER.indexOf(p) > ORDER.indexOf(page) ? 1 : -1;
+  page=p; ORDER.forEach(k => $('#'+k).hidden = k!==p);
+  const v = $('#'+p); v.style.setProperty('--from', dir>0 ? '40px' : '-40px');
+  v.style.animation='none'; v.offsetHeight; v.style.animation='';
+  $('#pageBtn').innerHTML = p==='apps' ? ICON_HOME : ICON_APPS;
+  $('#pageBtn').setAttribute('aria-label', p==='apps' ? 'Today' : 'All apps');
+  document.querySelectorAll('#dots [data-go]').forEach(b=>b.setAttribute('aria-current', b.dataset.go===p));
+  if(p==='apps') renderAppList();
+  if(p==='now') enterNow();
+  scrollTo(0,0);
+}
+$('#pageBtn').innerHTML = ICON_APPS;
+$('#pageBtn').onclick = () => show(page==='apps' ? 'today' : 'apps');
+$('#dots').addEventListener('click', e=>{ const b=e.target.closest('[data-go]'); if(b) show(b.dataset.go) });
+$('#sortGroups').onclick = () => { prefs.sort='groups'; savePrefs(); renderAppList() };
+$('#sortAZ').onclick = () => { prefs.sort='az'; savePrefs(); renderAppList() };
+
+// horizontal swipe: Now ← Today → Apps
+let sx=0, sy=0, st=0;
+$('#shell').addEventListener('pointerdown', e=>{ sx=e.clientX; sy=e.clientY; st=Date.now() });
+$('#shell').addEventListener('pointerup', e=>{
+  if(FEED) return;
+  const dx=e.clientX-sx, dy=e.clientY-sy, i=ORDER.indexOf(page);
+  if(Date.now()-st<600 && Math.abs(dx)>80 && Math.abs(dy)<60){
+    if(dx<0 && i<ORDER.length-1) show(ORDER[i+1]);
+    if(dx>0 && i>0) show(ORDER[i-1]);
+  }
+});
+
+/* ---------- tap and long-press on apps ---------- */
+let lpTimer=0, lpFired=false, lpStart=null;
+document.addEventListener('pointerdown', e=>{
+  const b=e.target.closest('[data-cmp]'); if(!b) return;
+  lpFired=false; lpStart=[e.clientX,e.clientY];
+  lpTimer=setTimeout(()=>{ lpFired=true; lpStart=null; appMenu(b.dataset.cmp) }, 480);
+});
+document.addEventListener('pointermove', e=>{ if(lpStart && Math.hypot(e.clientX-lpStart[0], e.clientY-lpStart[1])>10){ clearTimeout(lpTimer); lpStart=null } });
+document.addEventListener('pointerup', ()=>{ clearTimeout(lpTimer); lpStart=null });
+document.addEventListener('pointercancel', ()=>{ clearTimeout(lpTimer); lpStart=null });
+document.addEventListener('contextmenu', e=>{ if(e.target.closest('[data-cmp]')) e.preventDefault() });
+document.addEventListener('click', e=>{
+  const b=e.target.closest('[data-cmp]');
+  if(b){ if(lpFired){ lpFired=false; return } launch(b.dataset.cmp); return }
+  const ev=e.target.closest('[data-ev]');
+  if(ev){
+    const id = ev.dataset.ev;
+    if(id.startsWith('ms')){ const m = MSEVENTS.find(x=>x.id===id); (N && m && m.url) ? N.openUrl(m.url) : toast('On the phone this opens the event in Outlook'); return }
+    N ? N.openEvent(id) : toast('On the phone this opens the event in your calendar');
+  }
+});
+
+/* ---------- sheets ---------- */
+const wrap=$('#sheetwrap'), sheet=$('#sheet');
+function openSheet(html){ sheet.innerHTML = `<div class="grab"></div>${html}`; wrap.hidden=false }
+function closeSheet(){ wrap.hidden=true }
+wrap.addEventListener('click', e=>{ if(e.target===wrap) closeSheet() });
+const SV = {
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+  info:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/></svg>',
+  del:'<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',
+  up:'<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  home:'<svg viewBox="0 0 24 24"><path d="M4 11.2l8-6.6 8 6.6v7.6a1.4 1.4 0 0 1-1.4 1.4H15v-5.4H9v5.4H5.4A1.4 1.4 0 0 1 4 18.8z"/></svg>'
+};
+function appMenu(cmp){
+  const a=byCmp(cmp); if(!a) return; const pinned=pins.includes(cmp), i=pins.indexOf(cmp);
+  openSheet(`<div class="mhead"><img class="ico" src="${iconSrc(a)}" alt=""><b>${esc(a.label)}</b></div>
+    <button class="opt" data-m="pin">${SV.pin}${pinned?'Remove from Pinned':pins.length>=12?'Pinned is full (12 max)':'Pin to Today'}</button>
+    ${pinned && i>0 ? `<button class="opt" data-m="first">${SV.up}Move to first</button>` : ''}
+    <button class="opt" data-m="info">${SV.info}App info</button>
+    <button class="opt danger" data-m="uninstall">${SV.del}Uninstall</button>`);
+  sheet.onclick = e => { const m=e.target.closest('[data-m]'); if(!m) return; const k=m.dataset.m;
+    if(k==='pin'){ if(pinned) pins.splice(i,1); else if(pins.length<12) pins.push(cmp); savePins(); renderPins(); toast(pinned?`Removed ${a.label}`:`Pinned ${a.label}`) }
+    if(k==='first'){ pins.splice(i,1); pins.unshift(cmp); savePins(); renderPins() }
+    if(k==='info') N ? N.appInfo(a.pkg) : toast('On the phone this opens App info');
+    if(k==='uninstall') N ? N.uninstall(a.pkg) : toast('On the phone this asks before uninstalling');
+    closeSheet(); };
+}
+function settingsSheet(){
+  const ch = (key, opts) => `<div class="choice">${opts.map(([v,l])=>`<button data-k="${key}" data-v="${v}" aria-pressed="${prefs[key]===v}">${l}</button>`).join('')}</div>`;
+  const envs = Object.entries(ENVS).filter(([k])=>N||k!=='wallpaper').map(([k,e])=>[k,e.name]);
+  const isHome = N && N.isHome();
+  openSheet(`<h2>${FEED ? 'Now page' : 'Home screen'}</h2><div class="sub">${FEED ? 'Look and theme are set in Horizon settings.' : 'Changes apply right away.'}</div>
+    ${FEED ? '' : `<div class="slabel">Background</div>${ch('env', envs)}
+    <div class="slabel">Appearance</div>${ch('theme', [['system','Match phone'],['light','Light'],['dark','Dark']])}
+    <div class="slabel">App icons</div>${ch('icons', [['color','Original colors'],['themed','Themed']])}`}
+    <div class="slabel">Microsoft account · To Do and Outlook Calendar</div>
+    ${msSection()}
+    <div class="slabel">Now page · weather</div>${ch('units', [['C','°C'],['F','°F']])}
+    <div class="slabel">Now page · stories</div>
+    <div class="choice">${TOPIC_PRESETS.concat(prefs.topics.filter(t=>!TOPIC_PRESETS.some(p=>p[0]===t)).map(t=>[t,topicLabel(t)])).map(([t,l])=>`<button data-topic="${esc(t)}" aria-pressed="${prefs.topics.includes(t)}">${esc(l)}</button>`).join('')}</div>
+    <form class="addt" id="topicAdd" style="margin-top:10px" autocomplete="off"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><input id="topicInput" placeholder="Add a topic, like robotics" aria-label="Add a story topic"></form>
+    ${FEED ? '' : `<div class="slabel">Default home app</div>
+    <button class="opt" data-k="home" data-v="1">${SV.home}${isHome ? 'Horizon is your home screen. Change' : 'Make Horizon your home screen'}</button>`}`);
+  $('#topicAdd').addEventListener('submit', e=>{ e.preventDefault(); const v=$('#topicInput').value.trim().toLowerCase(); if(!v) return;
+    if(!prefs.topics.includes(v)) prefs.topics.push(v); savePrefs(); settingsSheet(); if(page==='now') loadNews() });
+  const cid = $('#msClient'); if(cid) $('#msClientForm').addEventListener('submit', e=>{ e.preventDefault();
+    const v=cid.value.trim(); if(!/^[0-9a-f-]{36}$/i.test(v)){ toast('That doesn’t look like an Application (client) ID'); return }
+    N.msSetClientId(v); toast('Saved. Now sign in.'); settingsSheet() });
+  sheet.onclick = e => {
+    const tp=e.target.closest('[data-topic]');
+    if(tp){ const t=tp.dataset.topic, on=prefs.topics.includes(t);
+      if(on && prefs.topics.length===1){ toast('Keep at least one topic'); return }
+      prefs.topics = on ? prefs.topics.filter(x=>x!==t) : prefs.topics.concat(t);
+      if(!prefs.topics.includes(topic)) topic = prefs.topics[0];
+      savePrefs(); tp.setAttribute('aria-pressed', !on); if(page==='now') loadNews(); return }
+    const m=e.target.closest('[data-ms]');
+    if(m){ const k=m.dataset.ms;
+      if(k==='in'){ if(N) N.msSignIn(); else { store.set('hz-ms-mock', true); hz.onMsAuth(true, 'preview@example.com') } }
+      if(k==='out'){ if(N) N.msSignOut(); else store.set('hz-ms-mock', false);
+        ['hz-ms-tasks','hz-ms-lists','hz-ms-events','hz-ms-at'].forEach(k=>{ try{localStorage.removeItem(k)}catch(e){} });
+        MSTASKS=[]; MSLISTS=[]; MSEVENTS=[]; loadMs(); renderTasks(); renderAgenda(); settingsSheet(); toast('Signed out of Microsoft') }
+      if(k==='sync'){ syncMs(true); closeSheet() }
+      if(k==='help'){ N ? N.openUrl('https://learn.microsoft.com/entra/identity-platform/quickstart-register-app') : toast('On the phone this opens Microsoft’s setup guide') }
+      return }
+    const b=e.target.closest('[data-k]'); if(!b) return;
+    if(b.dataset.k==='home'){ N ? N.homeSettings() : toast('On the phone this opens Default home app'); return }
+    prefs[b.dataset.k]=b.dataset.v; savePrefs(); applyTheme(); applyEnv();
+    if(b.dataset.k==='icons'){ renderPins(); if(page==='apps') renderAppList() }
+    if(b.dataset.k==='units'){ wx=null; if(page==='now') loadWeather(true) }
+    sheet.querySelectorAll(`[data-k="${b.dataset.k}"]`).forEach(x=>x.setAttribute('aria-pressed', x.dataset.v===prefs[b.dataset.k])); };
+}
+const MS_ICON = '<svg viewBox="0 0 24 24" style="stroke:none"><rect x="3" y="3" width="8.5" height="8.5" fill="#F25022"/><rect x="12.5" y="3" width="8.5" height="8.5" fill="#7FBA00"/><rect x="3" y="12.5" width="8.5" height="8.5" fill="#00A4EF"/><rect x="12.5" y="12.5" width="8.5" height="8.5" fill="#FFB900"/></svg>';
+function msSection(){
+  if(ms.on) return `<div class="sub" style="padding:0 6px">Signed in as <b>${esc(ms.name)}</b>${ms.mock?' (preview with sample data)':''}. ${syncedAgo()}</div>
+    <button class="opt" data-ms="sync">${SV.up}Sync now</button><button class="opt danger" data-ms="out">${SV.del}Sign out of Microsoft</button>`;
+  const hasId = !N || (N.msGetClientId && N.msGetClientId());
+  if(!hasId) return `<div class="sub" style="padding:0 6px;line-height:1.45">Microsoft needs an app ID before Horizon can sign in. In the Azure portal, register an app, choose <b>Accounts in any organizational directory and personal Microsoft accounts</b>, and add a <b>Mobile and desktop</b> redirect URI <b>horizon://auth</b>. Paste its Application (client) ID here.</div>
+    <form class="addt" id="msClientForm" autocomplete="off"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><input id="msClient" placeholder="Application (client) ID" aria-label="Microsoft Application (client) ID" spellcheck="false"></form>
+    <button class="opt" data-ms="help">${SV.info}Open Microsoft’s setup guide</button>`;
+  return `<button class="opt" data-ms="in">${MS_ICON}Sign in with Microsoft${N?'':' (preview)'}</button>`;
+}
+$('#settingsBtn').onclick = settingsSheet;
+
+/* ---------- search ---------- */
+const q=$('#q'), res=$('#results'), resIn=$('#resultsIn'); let topAction=null;
+function clearSearch(){ q.value=''; res.hidden=true; $('#qclr').hidden=true; q.blur() }
+function renderSearch(){
+  const v=q.value.trim(), lv=v.toLowerCase(); $('#qclr').hidden=!v;
+  if(!v){ res.hidden=true; return }
+  const apps = APPS.filter(a=>a.label.toLowerCase().includes(lv))
+    .sort((a,b)=>(b.label.toLowerCase().startsWith(lv))-(a.label.toLowerCase().startsWith(lv))).slice(0,8);
+  const evs = normEvents().filter(e=>(e.title||'').toLowerCase().includes(lv)).slice(0,3);
+  const tks = TASKS.filter(t=>!t.d && t.t.toLowerCase().includes(lv)).slice(0,3);
+  const web = () => { N ? N.webSearch(v) : toast(`On the phone this searches the web for “${v}”`); clearSearch() };
+  let html='';
+  if(apps.length) html += `<div class="rl">Apps</div><div class="agrid" style="margin-bottom:8px">${apps.map(appBtn).join('')}</div>`;
+  if(evs.length) html += `<div class="rl">Calendar</div>` + evs.map(e=>`<button class="rrow" data-ev="${e.id}"><span class="g" style="background:${hex(e.color)}33"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16"/></svg></span><span>${esc(e.title)}<small>${dayLabel(Math.max(e.s,todayStart()))}${e.allDay?'':' · '+tfmt(e.s)}</small></span></button>`).join('');
+  if(tks.length) html += `<div class="rl">Tasks</div>` + tks.map(t=>`<div class="rrow"><span class="g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/></svg></span><span>${esc(t.t)}</span></div>`).join('');
+  html += `<div class="rl">Web</div><button class="rrow${apps.length?'':' top'}" id="webGo"><span class="g"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/></svg></span><span>Search the web for “${esc(v)}”</span></button>`;
+  resIn.innerHTML = html; res.hidden=false;
+  topAction = apps.length ? ()=>launch(apps[0].cmp) : web;
+  $('#webGo').onclick = web;
+}
+q.addEventListener('input', renderSearch);
+q.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); topAction && topAction() } });
+$('#qclr').onclick = () => clearSearch();
+
+/* ---------- toast ---------- */
+let tt=0; function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true, 2400) }
+
+/* ---------- look from the launcher (palette, mode, corner radius) ---------- */
+hz.setLook = o => {
+  const r = document.documentElement, st = r.style;
+  r.dataset.theme = o.dark ? 'dark' : 'light';
+  const map = {'--bg':o.bg,'--surface':o.surface,'--surface-solid':o.solid,'--sunk':o.sunk,'--chip':o.chip,'--fg':o.fg,'--fg-2':o.fg2,'--fg-3':o.fg3,
+    '--accent':o.accent,'--accent-soft':o.accentSoft,'--on-accent':o.onAccent,'--line':o.line,'--danger':o.danger,'--rim':o.rim};
+  Object.entries(map).forEach(([k,v]) => v && st.setProperty(k, v));
+  st.setProperty('--card-r', o.radius + 'px');
+  st.setProperty('color-scheme', o.dark ? 'dark' : 'light');
+  document.body.dataset.look = o.style;
+};
+
+/* ---------- native hooks ---------- */
+hz.back = () => {
+  if(!wrap.hidden){ closeSheet(); return 1 }
+  if(q.value || document.activeElement===q){ clearSearch(); return 1 }
+  if(!FEED && page!=='today'){ show('today'); return 1 }
+  return 0;
+};
+hz.goHome = () => { closeSheet(); clearSearch(); if(!FEED && page!=='today') show('today'); else scrollTo({top:0, behavior: reduce?'auto':'smooth'}) };
+hz.refresh = () => { loadApps(); ensurePins(); loadEvents(); loadMs(); renderPins(); renderAgenda(); renderTasks(); syncMs(false);
+  if(page==='apps') renderAppList(); if(FEED || page==='now') enterNow(); tick() };
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') hz.back() });
+
+/* ---------- boot ---------- */
+if(FEED){
+  document.body.classList.add('feed');
+  if(N) prefs.env = 'wallpaper';
+  const now = $('#now'), stories = $('#h-news').closest('.card');
+  ['#h-agenda','#h-tasks','#h-focus'].forEach(id => now.insertBefore($(id).closest('.card'), stories));
+  $('#nowNext').remove();
+  $('#h-pins').closest('.card').remove();
+  $('#discoverBtn').parentNode.prepend($('#settingsBtn'));
+  $('#today').hidden = true; $('#now').hidden = false; page = 'now';
+}
+applyTheme(); applyEnv();
+$('#previewTag').hidden = !!N || FEED;
+loadApps(); ensurePins(); loadEvents(); loadMs();
+tick(); renderPins(); renderAgenda(); renderTasks(); renderFocus(); syncMs(false);
+if(FEED) enterNow();
+})();
+</script>
+</body>
+</html>
