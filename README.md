@@ -2,7 +2,14 @@
 
 An Android home-screen launcher (`com.praiselab.horizon`): clock and agenda, live tiles, folders, widgets, an app drawer with search, and optional Microsoft To Do / calendar sign-in (you enter your own client ID; no secret ships in the app).
 
-<img src="docs/home.jpg" alt="Horizon home screen with a clock, weather, music controls and app folders (personal details blurred)" width="300">
+<p>
+  <img src="docs/home.jpg" alt="Home screen with a clock, weather, music controls and app folders" width="200">
+  <img src="docs/drawer.jpg" alt="App library with apps sorted into groups such as Social, Work, Shopping and Travel" width="200">
+  <img src="docs/look.jpg" alt="Quick panel with toggles, brightness, music and the Look styles: Material, Glass, Spatial, Android, Tiles" width="200">
+  <img src="docs/customize.jpg" alt="Customize Home menu: widgets, Now Playing, Look, wallpaper, custom widgets, settings" width="200">
+</p>
+
+Home screen, app library, quick panel with Look styles, and the Customize Home menu. Personal details are blurred.
 
 ## Download
 
